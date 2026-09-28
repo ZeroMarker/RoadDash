@@ -83,6 +83,27 @@ Entities that stay a fixed distance apart on screen (the car's lateral
 position, the camera) get explicit naming: `px` is the lane offset, `pWorldX` is
 where the car actually is.
 
+## Deploying
+
+**GitHub Pages** — push to `main`; `.github/workflows/deploy.yml` builds and
+publishes. Live at <https://zeromarker.github.io/RoadDash/>.
+
+**Local Caddy** — `./deploy/deploy-local.sh` builds, publishes and reloads
+Caddy. Live at <https://road.20070809.xyz/>.
+
+```
+deploy/
+  caddy-site.roaddash   the site block (no auth, unlike the other subdomains)
+  deploy-local.sh       build → publish → validate → reload
+```
+
+Releases are immutable directories under `/srv/roaddash/releases/<UTC stamp>`,
+with `current` a symlink Caddy serves from. Publishing is an atomic symlink swap,
+so the site never serves a half-written directory, and a rollback is a symlink
+swap rather than a rebuild. The script validates the Caddyfile before reloading
+and refuses to reload on failure, leaving the previous config live; it also
+backs up `Caddyfile` before appending the import line.
+
 ## Testing
 
 The renderer is not the thing under test, and headless WebGL only manages a few

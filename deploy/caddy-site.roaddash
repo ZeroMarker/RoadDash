@@ -1,0 +1,21 @@
+road.20070809.xyz {
+	encode zstd gzip
+
+	root * /srv/roaddash/current
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Vite emits content-hashed filenames, so these are safe to cache hard.
+	@static path *.css *.js *.svg *.png *.jpg *.jpeg *.webp *.woff *.woff2
+	header @static Cache-Control "public, max-age=604800"
+
+	# index.html must not be cached, or clients pin a stale asset manifest.
+	header / Cache-Control "no-cache"
+
+	file_server
+}
