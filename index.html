@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b0e14" />
+    <title>RoadDash — endless night racing</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <!-- ================= HUD ================= -->
+      <div id="hud" class="hud" hidden>
+        <div class="hud-top">
+          <div class="speedo">
+            <svg viewBox="0 0 140 140" class="speedo-dial" aria-hidden="true">
+              <circle class="dial-track" cx="70" cy="70" r="56" />
+              <circle class="dial-fill" id="dialFill" cx="70" cy="70" r="56" />
+            </svg>
+            <div class="speedo-read">
+              <span id="speedValue">0</span>
+              <small>KM/H</small>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="stat stat-score">
+              <span class="stat-value" id="scoreValue">0</span>
+              <span class="stat-label">SCORE</span>
+            </div>
+            <div class="stat">
+              <span class="stat-value" id="distanceValue">0</span>
+              <span class="stat-label">METRES</span>
+            </div>
+          </div>
+
+          <div class="right-stack">
+            <div class="coins">
+              <span class="coin-dot"></span>
+              <span id="coinValue">0</span>
+            </div>
+            <div class="best">
+              BEST <span id="bestValue">0</span>
+            </div>
+            <button id="muteButton" class="icon-button" type="button" aria-label="Toggle sound">
+              <span id="muteIcon">♪</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="policeWarning" class="police-warning" hidden>
+          <span class="police-dot"></span> POLICE IN PURSUIT
+        </div>
+
+        <div id="banner" class="banner" hidden>
+          <span id="bannerTitle"></span>
+          <small id="bannerSub"></small>
+        </div>
+
+        <div class="hud-bottom">
+          <div class="shield" id="shieldRow" aria-label="Damage"></div>
+          <div class="nitro">
+            <div class="nitro-track">
+              <div class="nitro-fill" id="nitroFill"></div>
+            </div>
+            <span class="nitro-label" id="nitroLabel">NITRO</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= START ================= -->
+      <div id="startScreen" class="overlay">
+        <div class="panel">
+          <h1 class="logo">
+            <span class="logo-a">ROAD</span><span class="logo-b">DASH</span>
+          </h1>
+          <p class="tagline">Endless night racing. Three lanes, one thumb, no brakes.</p>
+
+          <div class="car-select" id="carSelect"></div>
+
+          <div class="controls">
+            <div class="control"><kbd>←</kbd><kbd>→</kbd><span>change lane</span></div>
+            <div class="control"><kbd>↑</kbd><span>jump ramps</span></div>
+            <div class="control"><kbd>↓</kbd><span>drift — fills nitro</span></div>
+            <div class="control"><kbd>SPACE</kbd><span>nitro</span></div>
+          </div>
+          <p class="hint">Swipe on touch · squeeze coins, drift and near-miss traffic to charge nitro</p>
+
+          <button id="startButton" class="cta" type="button">START ENGINE</button>
+          <p class="best-line">PERSONAL BEST <span id="startBest">0</span></p>
+        </div>
+      </div>
+
+      <!-- ================= GAME OVER ================= -->
+      <div id="overScreen" class="overlay" hidden>
+        <div class="panel">
+          <h2 id="overTitle" class="over-title">WRECKED</h2>
+          <p id="overReason" class="over-reason">You clipped too much metal.</p>
+          <div class="result-grid">
+            <div><span id="finalScore">0</span><small>SCORE</small></div>
+            <div><span id="finalDistance">0</span><small>METRES</small></div>
+            <div><span id="finalCoins">0</span><small>COINS</small></div>
+            <div><span id="finalBest">0</span><small>BEST</small></div>
+          </div>
+          <div id="newBest" class="new-best" hidden>NEW PERSONAL BEST</div>
+          <button id="retryButton" class="cta" type="button">RUN IT AGAIN</button>
+          <p class="hint">Press <kbd>SPACE</kbd> or <kbd>ENTER</kbd> to restart</p>
+        </div>
+      </div>
+
+      <!-- ================= PAUSE ================= -->
+      <div id="pauseScreen" class="overlay" hidden>
+        <div class="panel small">
+          <h2 class="over-title">PAUSED</h2>
+          <p class="over-reason">Engine idling.</p>
+          <button id="resumeButton" class="cta" type="button">RESUME</button>
+          <button id="quitButton" class="cta ghost" type="button">CHANGE CAR</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

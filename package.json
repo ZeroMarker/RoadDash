@@ -1,0 +1,27 @@
+{
+  "name": "roaddash",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "RoadDash — a three-lane endless racer in the spirit of Subway Surfers x Burnout",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "node tools/smoke.mjs && node tools/mechanics.mjs",
+    "test:soak": "node tools/soak.mjs --seconds 60",
+    "shots": "node tools/biomes.mjs",
+    "shot": "node tools/inspect.mjs",
+    "probe": "node tools/probe.mjs"
+  },
+  "dependencies": {
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.169.0",
+    "puppeteer-core": "^23.11.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}
