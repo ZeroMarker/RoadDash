@@ -123,5 +123,16 @@ asserted on *predicted time to contact* rather than distance, because traffic
 recedes at its own speed — a fixed lead distance either jumps too early or too
 late depending on the obstacle.
 
+`tools/fx.mjs` covers the pickup effects: that collecting a coin or power-up
+fires a ring and sparks, that the ring pool stays a fixed size under a magnet
+sweep that pops a whole line in one frame, and that the HUD coin counter
+animates. Pool boundedness is the assertion that matters — a ring allocated per
+collection is exactly the kind of thing that only shows up as a GC hitch once a
+player is chaining a 40-coin line.
+
+Both suites drive `Game.debugStep()` at a fixed timestep and inject actions
+through the same entry point the input layer uses. The tools take `--url`, so
+they can be pointed at a deployed build.
+
 `tools/inspect.mjs` dumps a per-frame hazard/player overlap trace, which is the
 fastest way to attribute a collision bug to spawning versus collision geometry.

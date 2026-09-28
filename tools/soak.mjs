@@ -112,6 +112,9 @@ await browser.close();
 
 const first = samples[1] ?? samples[0];
 const last = samples[samples.length - 1];
+// g.best is only written on game over, so a bot that survives the whole window
+// leaves it at 0. Report the best score actually observed during the run.
+const bestObserved = Math.max(...samples.map((s) => s.score));
 const problems = [];
 if (errors.length) problems.push(...errors);
 if (last.meshes > first.meshes * 1.5 + 40) {
@@ -122,7 +125,7 @@ if (last.pickups > 200) problems.push(`pickup pool overrun: ${last.pickups}`);
 if (last.hazards > 60) problems.push(`hazard pool overrun: ${last.hazards}`);
 if (last.props > 260) problems.push(`prop pool overrun: ${last.props}`);
 
-console.log(`\nbest score reached: ${last.best}`);
+console.log(`\nbest score observed: ${bestObserved}`);
 if (problems.length) {
   console.error('\nproblems:');
   for (const p of problems) console.error(' -', p);

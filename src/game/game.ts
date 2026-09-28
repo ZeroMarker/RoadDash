@@ -19,11 +19,12 @@ import { TrackHints } from './hints';
 import { TrafficSystem } from './traffic';
 import { CollectibleSystem } from './collectibles';
 import { Player } from './player';
-import { Effects, SpeedLines } from './effects';
+import { Effects, PickupRings, SpeedLines } from './effects';
 import { AudioKit } from './audio';
 import { Input } from './input';
 import { Hud, type RunStats } from './hud';
 import { box } from './gfx';
+import type { PickedUp } from './collectibles';
 import type { Action } from './input';
 
 type State = 'menu' | 'playing' | 'paused' | 'over';
@@ -52,6 +53,7 @@ export class Game {
   private coins: CollectibleSystem;
   private player: Player;
   private effects: Effects;
+  private rings: PickupRings;
   private speedLines: SpeedLines;
   private audio = new AudioKit();
   private hud = new Hud();
@@ -140,6 +142,7 @@ export class Game {
     this.coins = new CollectibleSystem(this.scene, this.hints);
     this.player = new Player(this.scene, this.hud.car);
     this.effects = new Effects(this.scene);
+    this.rings = new PickupRings(this.scene);
     this.speedLines = new SpeedLines(this.scene);
 
     // Fake contact shadow keeps the car glued to the road without shadow maps.
@@ -284,6 +287,7 @@ export class Game {
     this.coins.reset(this.playerZ);
     this.props.reset();
     this.effects.clear();
+    this.rings.clear();
     this.hints.zones.length = 0;
     this.hud.setNitro(0, false);
     this.hud.setShield(this.player.hp, this.player.maxHp);
@@ -336,7 +340,9 @@ export class Game {
       this.coinCount += collected.coins;
       this.score += collected.coins * COIN_VALUE;
       this.audio.coin();
+      this.hud.pulseCoins();
     }
+    this.playPickupEffects(collected.picked);
     if (collected.magnet) {
       this.magnet = true;
       this.magnetTimer = 9;
@@ -421,6 +427,41 @@ export class Game {
     this.audio.update(speedRatio, true, this.player.nitroActive);
 
     this.effects.update(dt);
+    this.rings.update(dt);
+  }
+
+  /**
+   * Pop a ring at every pickup, tuned per kind: coins get a small warm ring
+   * plus a sparkle, power-ups get a bigger, slower ring so they read as
+   * important even in a dense coin run.
+   */
+  private playPickupEffects(picked: PickedUp[]): void {
+    for (const p of picked) {
+      if (p.kind === 'coin') {
+        // Spawn the pop slightly above the coin: the pickup is collected at
+        // roof height, so a ring at the exact point sits half-buried in the car.
+        this.rings.pop(p.x, p.y + 0.35, p.z, 0xffc63a, 0.6, 0.3, this.camera);
+        // A few sparks, biased upward so they drift like coins spinning away.
+        this.effects.burst(p.x, p.y, p.z, 5, {
+          color: 0xffd873,
+          speed: 4,
+          life: 0.3,
+          spread: 1,
+          upward: 1.2,
+          size: 0.45,
+        });
+      } else {
+        const color = p.kind === 'magnet' ? 0x59c8ff : p.kind === 'shield' ? 0x7dff9e : 0xff7ae0;
+        this.rings.pop(p.x, p.y, p.z, color, 1.15, 0.5, this.camera);
+        this.effects.burst(p.x, p.y, p.z, 16, {
+          color,
+          speed: 9,
+          life: 0.6,
+          spread: 1.3,
+          upward: 0.8,
+        });
+      }
+    }
   }
 
   // -------------------------------------------------------------- collisions
@@ -732,6 +773,15 @@ export class Game {
   }
 
   /**
+   * Dev helper: place a pickup `ahead` metres in front of the player, ignoring
+   * lane-occupancy hints. Takes a forward distance, not a world Z — the caller
+   * should not have to know the sign convention of the player's axis.
+   */
+  debugSpawnPickup(kind: string, lane = this.player.lane, ahead = 14, y = 1.1): void {
+    this.coins.spawnAt(kind as never, lane, this.playerZ - ahead, y);
+  }
+
+  /**
    * Dev helper: advance the simulation deterministically, independent of the
    * render loop. Headless/software rendering can drop to a few frames per
    * second, which makes wall-clock-driven tests useless; this lets tests step
@@ -788,6 +838,7 @@ export class Game {
     this.coins.dispose();
     this.player.dispose();
     this.effects.dispose();
+    this.rings.dispose();
     this.speedLines.dispose();
     this.renderer.dispose();
   }

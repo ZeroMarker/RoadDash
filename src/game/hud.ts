@@ -169,6 +169,22 @@ export class Hud {
     this.bestValue.textContent = best.toLocaleString();
   }
 
+  /**
+   * Kick the coin counter. Pickups can happen at the edge of vision or behind
+   * the car, so the in-world pop is not always enough to confirm the collect —
+   * this is the confirmation that is always visible.
+   *
+   * The animation is restarted by toggling the class off and forcing a reflow;
+   * simply re-adding it does nothing once the animation has already run.
+   */
+  pulseCoins(): void {
+    const row = this.coinValue.parentElement;
+    if (!row) return;
+    row.classList.remove('bump');
+    void row.offsetWidth;
+    row.classList.add('bump');
+  }
+
   setNitro(value: number, active: boolean): void {
     this.nitroFill.style.width = `${Math.max(0, Math.min(100, value))}%`;
     this.nitroWrap.classList.toggle('full', value >= 99.5 && !active);

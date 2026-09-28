@@ -68,11 +68,21 @@ function makePickupMesh(kind: PickupKind): THREE.Object3D {
   return g;
 }
 
+export interface PickedUp {
+  kind: PickupKind;
+  /** World-space position, so effects can pop at the actual pickup point. */
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface CollectResult {
   coins: number;
   magnet: boolean;
   shield: boolean;
   nitro: boolean;
+  /** One entry per pickup collected this frame, in collection order. */
+  picked: PickedUp[];
 }
 
 export class CollectibleSystem {
@@ -105,7 +115,13 @@ export class CollectibleSystem {
   }
 
   update(dt: number, playerZ: number, playerX: number, playerY: number, magnet: boolean): CollectResult {
-    const result: CollectResult = { coins: 0, magnet: false, shield: false, nitro: false };
+    const result: CollectResult = {
+      coins: 0,
+      magnet: false,
+      shield: false,
+      nitro: false,
+      picked: [],
+    };
     if (this.nextZ === 0) this.nextZ = playerZ - 60;
 
     const limit = playerZ - VIEW_DIST * 0.8;
@@ -143,6 +159,7 @@ export class CollectibleSystem {
         const dy = p.y - (playerY + 0.9);
         if (Math.abs(dz) < 1.5 && Math.abs(dx) < 1.7 && Math.abs(dy) < 2.1) {
           p.collected = true;
+          result.picked.push({ kind: p.kind, x: p.x, y: p.y, z: p.z });
           if (p.kind === 'coin') result.coins++;
           else if (p.kind === 'magnet') result.magnet = true;
           else if (p.kind === 'shield') result.shield = true;
@@ -184,6 +201,16 @@ export class CollectibleSystem {
   private spawn(kind: PickupKind, lane: number, z: number, y: number): void {
     if (this.pickups.length >= MAX_PICKUPS) return;
     if (this.hints.isBlocked(lane, z, 1.2)) return;
+    this.spawnAt(kind, lane, z, y);
+  }
+
+  /**
+   * Spawn a pickup, ignoring lane-occupancy hints. Used by tooling to place a
+   * pickup in a known spot — the hints exist to stop coins generating inside
+   * trucks, which is a spawner concern, not an invariant of the pickup itself.
+   */
+  spawnAt(kind: PickupKind, lane: number, z: number, y: number): void {
+    if (this.pickups.length >= MAX_PICKUPS) return;
     const key = `${kind}`;
     let pool = this.pools.get(key);
     if (!pool) {
