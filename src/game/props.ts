@@ -105,6 +105,8 @@ export class PropField {
   }
 
   private spawn(z: number, biome: Biome): void {
+    // Check capacity before borrowing from a pool or allocating a model.
+    if (this.active.length >= MAX_PROPS) return;
     const entry = pickWeighted(biome.props, this.random);
     const def = DEFS[entry.kind];
     const key = `${entry.kind}:${(this.random() * def.variants) | 0}`;
@@ -114,7 +116,6 @@ export class PropField {
       this.pools.set(key, pool);
     }
     const obj = pool.pop() ?? makeProp(entry.kind, Number(key.split(':')[1]) || 0);
-    if (this.active.length >= MAX_PROPS) return;
 
     const side = this.random() < 0.5 ? -1 : 1;
     let offset: number;
@@ -157,7 +158,7 @@ export class PropField {
   /** Dev helper: clear the field and stop spawning. */
   freeze(): void {
     this.reset();
-    this.nextZ = Number.POSITIVE_INFINITY;
+    this.nextZ = Number.NEGATIVE_INFINITY;
   }
 
   dispose(): void {

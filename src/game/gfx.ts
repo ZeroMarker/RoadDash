@@ -6,12 +6,32 @@ import * as THREE from 'three';
  */
 const matCache = new Map<string, THREE.Material>();
 const geoCache = new Map<string, THREE.BufferGeometry>();
+const optionIds = new WeakMap<object, number>();
+let nextOptionId = 0;
+
+/** Keep object-valued options (such as textures) distinct without serialising them. */
+function optionKey(value: unknown): unknown {
+  if (value instanceof THREE.Color) return { color: value.getHex() };
+  if (value !== null && typeof value === 'object') {
+    let id = optionIds.get(value);
+    if (id === undefined) {
+      id = ++nextOptionId;
+      optionIds.set(value, id);
+    }
+    return { ref: id };
+  }
+  return value;
+}
 
 export function mat(
   color: number,
   opts: Partial<THREE.MeshLambertMaterialParameters> = {},
 ): THREE.MeshLambertMaterial {
-  const key = `${color}|${opts.emissive ?? 0}|${opts.emissiveIntensity ?? 0}|${opts.transparent ?? false}|${opts.opacity ?? 1}`;
+  const options = Object.entries(opts)
+    .filter(([, value]) => value !== undefined)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, value]) => [name, optionKey(value)]);
+  const key = JSON.stringify([color, options]);
   let m = matCache.get(key) as THREE.MeshLambertMaterial | undefined;
   if (!m) {
     m = new THREE.MeshLambertMaterial({ color, ...opts });
@@ -37,7 +57,9 @@ export function box(
   opts: Partial<THREE.MeshLambertMaterialParameters> = {},
   key?: string,
 ): THREE.Mesh {
-  const g = key ? geo(key, () => new THREE.BoxGeometry(w, h, d)) : new THREE.BoxGeometry(w, h, d);
+  // A part name alone is insufficient: each car has its own width. Unnamed
+  // boxes also share geometry, so repeated scenery does not allocate buffers.
+  const g = geo(`box:${key ?? ''}:${w}:${h}:${d}`, () => new THREE.BoxGeometry(w, h, d));
   return new THREE.Mesh(g, mat(color, opts));
 }
 
