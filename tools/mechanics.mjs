@@ -409,6 +409,11 @@ await new Promise((r) => setTimeout(r, 900));
 
 // ------------------------------------------------------------------ pause
 {
+  await run(`
+    const g = window.roaddash;
+    ${clean(1)}
+    g.player.nitro = 100;
+  `);
   await page.keyboard.press('KeyP');
   await new Promise((r) => setTimeout(r, 250));
   const paused = await page.evaluate(() => ({
@@ -416,10 +421,100 @@ await new Promise((r) => setTimeout(r, 900));
     state: window.roaddash.state,
   }));
   check('pause opens the panel', paused.panel && paused.state === 'paused', JSON.stringify(paused));
+  const frozen = await run(`
+    const g = window.roaddash;
+    const snapshot = () => JSON.stringify({
+      lane: g.player.lane, y: g.player.y, vy: g.player.vy,
+      airborne: g.player.airborne, sliding: g.player.sliding,
+      nitroActive: g.player.nitroActive, nitro: g.player.nitro,
+      distance: g.distance, score: g.score,
+    });
+    const before = snapshot();
+    for (const action of ['left', 'right', 'jump', 'slide', 'nitro', 'confirm']) {
+      g.debugAction(action);
+    }
+    g.debugStep(60);
+    return { before, after: snapshot() };
+  `);
+  check('pause ignores driving actions and freezes simulation', frozen.before === frozen.after);
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', {
+    code: 'KeyP', repeat: true, cancelable: true,
+  })));
+  check('holding pause does not resume', await page.evaluate(() => window.roaddash.state === 'paused'));
+  await page.focus('#resumeButton');
+  await page.keyboard.press('Enter');
+  check('keyboard activates resume button', await page.evaluate(() => window.roaddash.state === 'playing'));
+  await page.keyboard.press('KeyP');
   await page.keyboard.press('KeyP');
   await new Promise((r) => setTimeout(r, 250));
   const resumed = await page.evaluate(() => window.roaddash.state);
   check('pause resumes', resumed === 'playing', resumed);
+}
+
+// ---------------------------------------------------------- keyboard toggles
+{
+  const held = await run(`
+    const g = window.roaddash;
+    ${clean(1)}
+    g.player.nitro = 100;
+    const key = repeat => window.dispatchEvent(new KeyboardEvent('keydown', {
+      code: 'Space', repeat, cancelable: true,
+    }));
+    key(false);
+    const activated = g.player.nitroActive;
+    key(true);
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
+    return { activated, stillActive: g.player.nitroActive };
+  `);
+  check('holding nitro does not cancel the boost', held.activated && held.stillActive);
+  const mutedBefore = await page.evaluate(() => window.roaddash.muted);
+  await page.focus('#muteButton');
+  await page.keyboard.press('Space');
+  const mute = await page.evaluate(() => ({
+    muted: window.roaddash.muted,
+    nitroActive: window.roaddash.player.nitroActive,
+  }));
+  check('space activates mute without toggling nitro', mute.muted !== mutedBefore && mute.nitroActive);
+}
+
+// ---------------------------------------------------------- road buffer safety
+{
+  const road = await run(`
+    const g = window.roaddash;
+    g.debugAction('pause');
+    const ribbon = g.ribbon;
+    const position = ribbon.mesh.geometry.attributes.position;
+    const color = ribbon.mesh.geometry.attributes.color;
+    const verticesPerRow = (ribbon.bands.length + 2) * 6;
+    const wholeRows = Number.isInteger(position.count / verticesPerRow);
+    ribbon.update(-123);
+    const z0 = position.array[position.array.length - 34];
+    const anchor = -123 + ((-z0 % 13 + 13) % 13) - 1;
+    ribbon.update(anchor); // put the final row inside the painted dash phase
+    const version = position.version;
+    ribbon.update(anchor);
+    const unchanged = position.version === version;
+    // The last row must contain both lane dividers, with road-marking height
+    // and a real palette colour; a short buffer used to drop these vertices.
+    const last = Array.from(position.array.slice(-36));
+    const lastColors = Array.from(color.array.slice(-36));
+    const complete = wholeRows && last.every(Number.isFinite) &&
+      last.filter((_, i) => i % 3 === 1).every(y => Math.abs(y - 0.024) < 1e-6) &&
+      lastColors.every(c => c > 0);
+    const facesUp = [0, 18].every(i => {
+      const abX = last[i + 3] - last[i];
+      const abZ = last[i + 5] - last[i + 2];
+      const acX = last[i + 6] - last[i];
+      const acZ = last[i + 8] - last[i + 2];
+      return abZ * acX - abX * acZ > 0;
+    });
+    ribbon.update(anchor - 1);
+    return { unchanged, complete, facesUp, moved: position.version === version + 1 };
+  `);
+  check('road retains both dividers in the final row', road.complete);
+  check('both lane dividers face the camera above the road', road.facesUp);
+  check('stationary road skips GPU uploads', road.unchanged);
+  check('moving road refreshes GPU buffer', road.moved);
 }
 
 await browser.close();

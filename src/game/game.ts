@@ -204,6 +204,7 @@ export class Game {
   };
 
   private onAction(action: Action): void {
+    if (this.state === 'paused' && action !== 'pause') return;
     this.audio.start();
     switch (action) {
       case 'left':

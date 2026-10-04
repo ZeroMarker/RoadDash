@@ -37,18 +37,22 @@ export class RoadRibbon {
   private bands: Band[] = [];
   private palette: Biome | null = null;
   private tmpColor = new THREE.Color();
+  private lastPlayerZ: number | null = null;
 
   constructor() {
     this.bands = buildBands();
     const pairs = ROAD_ROWS - 1;
-    const quadsPerPair = this.bands.length + 1; // +1 slot for the dashed lane lines
+    const quadsPerPair = this.bands.length + 2; // one slot per dashed lane divider
     const vertexCount = pairs * quadsPerPair * 6;
 
     this.positions = new Float32Array(vertexCount * 3);
     this.colors = new Float32Array(vertexCount * 3);
 
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+    geo.setAttribute(
+      'position',
+      new THREE.BufferAttribute(this.positions, 3).setUsage(THREE.DynamicDrawUsage),
+    );
     geo.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
 
     const normals = new Float32Array(vertexCount * 3);
@@ -71,6 +75,10 @@ export class RoadRibbon {
 
   /** Rewrite the strip positions for a player anchored at `playerZ`. */
   update(playerZ: number): void {
+    // Menus and pause keep the same world anchor: avoid rebuilding and uploading
+    // the entire road buffer while the camera and environment settle.
+    if (playerZ === this.lastPlayerZ) return;
+    this.lastPlayerZ = playerZ;
     const pos = this.positions;
     const startZ = playerZ + ROW_LEN * 2;
     let p = 0;
@@ -80,7 +88,6 @@ export class RoadRibbon {
       const z1 = z0 - ROW_LEN;
       const x0 = curveX(z0);
       const x1 = curveX(z1);
-      const xm0 = x0 + (x1 - x0) * 0.5; // midpoint keeps long quads from skewing
 
       for (const band of this.bands) {
         p = quad(
@@ -103,28 +110,29 @@ export class RoadRibbon {
 
       // Two dashed lane dividers; the dash cycle is keyed to world distance.
       const dashOn = ((-z0) % 13 + 13) % 13 < 6.8;
-      for (const sign of [-1, 1]) {
-        const cx = xm0 + (sign * LANE_W) / 2;
+      for (let sign = -1; sign <= 1; sign += 2) {
+        const cx0 = x0 + (sign * LANE_W) / 2;
+        const cx1 = x1 + (sign * LANE_W) / 2;
         if (dashOn) {
           p = quad(
             pos,
             p,
-            cx - sign * MARKER_W,
+            cx0 - MARKER_W,
             Y_DASH,
             z0,
-            cx + sign * MARKER_W,
+            cx0 + MARKER_W,
             Y_DASH,
             z0,
-            cx + sign * MARKER_W,
+            cx1 + MARKER_W,
             Y_DASH,
             z1,
-            cx - sign * MARKER_W,
+            cx1 - MARKER_W,
             Y_DASH,
             z1,
           );
         } else {
           // Collapse to a single point below the world: a zero-area triangle.
-          p = degenerate(pos, p, cx, -400, z0);
+          p = degenerate(pos, p, cx0, -400, z0);
         }
       }
     }
@@ -204,19 +212,25 @@ function quad(
   dy: number,
   dz: number,
 ): number {
-  let i = p;
-  const set = (x: number, y: number, z: number) => {
-    out[i++] = x;
-    out[i++] = y;
-    out[i++] = z;
-  };
-  set(ax, ay, az);
-  set(bx, by, bz);
-  set(cx, cy, cz);
-  set(ax, ay, az);
-  set(cx, cy, cz);
-  set(dx, dy, dz);
-  return i;
+  out[p++] = ax;
+  out[p++] = ay;
+  out[p++] = az;
+  out[p++] = bx;
+  out[p++] = by;
+  out[p++] = bz;
+  out[p++] = cx;
+  out[p++] = cy;
+  out[p++] = cz;
+  out[p++] = ax;
+  out[p++] = ay;
+  out[p++] = az;
+  out[p++] = cx;
+  out[p++] = cy;
+  out[p++] = cz;
+  out[p++] = dx;
+  out[p++] = dy;
+  out[p++] = dz;
+  return p;
 }
 
 function degenerate(out: Float32Array, p: number, x: number, y: number, z: number): number {

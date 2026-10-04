@@ -37,6 +37,17 @@ export class Input {
 
   private onKeyDown = (e: KeyboardEvent) => {
     if (this.disposed) return;
+    // Native controls own their activation keys. Let Enter/Space activate the
+    // focused button instead of starting a run or firing nitro as well.
+    if (e.target instanceof HTMLElement) {
+      if (e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if ((e.code === 'Enter' || e.code === 'Space') && e.target.closest('button, a')) return;
+    }
+    // Pause and nitro are toggles; keyboard autorepeat must not toggle them back.
+    if (e.repeat && ['Escape', 'KeyP', 'Space', 'Enter'].includes(e.code)) {
+      e.preventDefault();
+      return;
+    }
     switch (e.code) {
       case 'ArrowLeft':
       case 'KeyA':
