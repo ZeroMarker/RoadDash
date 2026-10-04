@@ -760,6 +760,25 @@ export class Game {
   }
 
   /**
+   * Dev helper: end the current run. The results panel still waits 620 ms for
+   * the crash animation; screenshot tooling waits for that panel explicitly.
+   */
+  debugCrash(reason: RunStats['reason'] = 'wrecked'): void {
+    this.gameOver(reason, reason === 'busted' ? 'The cruiser ran you down.' : 'You clipped too much metal.');
+  }
+
+  /** Dev helper: drive the pause panel directly. */
+  debugPause(paused: boolean): void {
+    this.setPaused(paused);
+  }
+
+  /** Dev helper: stop automatic frames and draw the current state for screenshots. */
+  debugFreezeFrame(): void {
+    cancelAnimationFrame(this.raf);
+    this.render(1 / 60);
+  }
+
+  /**
    * Dev helper: drop a specific hazard into a lane so individual mechanics
    * (jump, duck, ramp, crash) can be exercised in isolation.
    */
@@ -832,6 +851,7 @@ export class Game {
     window.removeEventListener('resize', this.onResize);
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.input.dispose();
+    this.hud.dispose();
     this.audio.dispose();
     this.ribbon.dispose();
     this.props.dispose();

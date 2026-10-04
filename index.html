@@ -7,14 +7,21 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="theme-color" content="#0b0e14" />
+    <meta
+      name="description"
+      content="RoadDash — a three-lane endless racer. Swap lanes, jump ramps, drift traffic and burn nitro through six biomes."
+    />
     <title>RoadDash — endless night racing</title>
     <link rel="icon" href="data:," />
   </head>
   <body>
     <div id="app">
-      <canvas id="scene"></canvas>
+      <canvas id="scene" tabindex="-1"></canvas>
 
       <!-- ================= HUD ================= -->
+      <!-- The HUD is live but silent by default: only the banner and the police
+           warning announce themselves, so a screen reader is not read a speed
+           and a distance every frame. -->
       <div id="hud" class="hud" hidden>
         <div class="hud-top">
           <div class="speedo">
@@ -41,47 +48,66 @@
 
           <div class="right-stack">
             <div class="coins">
-              <span class="coin-dot"></span>
+              <span class="coin-dot" aria-hidden="true"></span>
               <span id="coinValue">0</span>
+              <span class="sr-only">coins</span>
             </div>
             <div class="best">
               BEST <span id="bestValue">0</span>
             </div>
-            <button id="muteButton" class="icon-button" type="button" aria-label="Toggle sound">
-              <span id="muteIcon">♪</span>
+            <button
+              id="muteButton"
+              class="icon-button"
+              type="button"
+              aria-label="Mute sound"
+              aria-pressed="false"
+            >
+              <span id="muteIcon" aria-hidden="true">♪</span>
             </button>
           </div>
         </div>
 
-        <div id="policeWarning" class="police-warning" hidden>
-          <span class="police-dot"></span> POLICE IN PURSUIT
+        <div id="policeWarning" class="police-warning" role="status" hidden>
+          <span class="police-dot" aria-hidden="true"></span> POLICE IN PURSUIT
         </div>
 
-        <div id="banner" class="banner" hidden>
+        <div id="banner" class="banner" role="status" aria-live="polite" hidden>
           <span id="bannerTitle"></span>
           <small id="bannerSub"></small>
         </div>
 
         <div class="hud-bottom">
-          <div class="shield" id="shieldRow" aria-label="Damage"></div>
+          <!-- The pips are decorative; the row carries the readable state. -->
+          <div id="shieldRow" class="shield" role="img" aria-label="Armour 3 of 3"></div>
           <div class="nitro">
-            <div class="nitro-track">
+            <div class="nitro-track" role="img" aria-label="Nitro 0%">
               <div class="nitro-fill" id="nitroFill"></div>
             </div>
-            <span class="nitro-label" id="nitroLabel">NITRO</span>
+            <span class="nitro-label" id="nitroLabel" aria-hidden="true">NITRO</span>
           </div>
         </div>
       </div>
 
       <!-- ================= START ================= -->
-      <div id="startScreen" class="overlay">
+      <div
+        id="startScreen"
+        class="overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="logoText"
+      >
         <div class="panel">
-          <h1 class="logo">
+          <h1 class="logo" id="logoText">
             <span class="logo-a">ROAD</span><span class="logo-b">DASH</span>
           </h1>
           <p class="tagline">Endless night racing. Three lanes, one thumb, no brakes.</p>
 
-          <div class="car-select" id="carSelect"></div>
+          <div
+            class="car-select"
+            id="carSelect"
+            role="radiogroup"
+            aria-label="Choose a car"
+          ></div>
 
           <div class="controls">
             <div class="control"><kbd>←</kbd><kbd>→</kbd><span>change lane</span></div>
@@ -97,10 +123,18 @@
       </div>
 
       <!-- ================= GAME OVER ================= -->
-      <div id="overScreen" class="overlay" hidden>
+      <div
+        id="overScreen"
+        class="overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="overTitle"
+        hidden
+      >
         <div class="panel">
           <h2 id="overTitle" class="over-title">WRECKED</h2>
           <p id="overReason" class="over-reason">You clipped too much metal.</p>
+          <p id="overWhere" class="over-where"></p>
           <div class="result-grid">
             <div><span id="finalScore">0</span><small>SCORE</small></div>
             <div><span id="finalDistance">0</span><small>METRES</small></div>
@@ -114,9 +148,16 @@
       </div>
 
       <!-- ================= PAUSE ================= -->
-      <div id="pauseScreen" class="overlay" hidden>
+      <div
+        id="pauseScreen"
+        class="overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pauseTitle"
+        hidden
+      >
         <div class="panel small">
-          <h2 class="over-title">PAUSED</h2>
+          <h2 id="pauseTitle" class="over-title held">PAUSED</h2>
           <p class="over-reason">Engine idling.</p>
           <button id="resumeButton" class="cta" type="button">RESUME</button>
           <button id="quitButton" class="cta ghost" type="button">CHANGE CAR</button>

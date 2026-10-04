@@ -1,23 +1,203 @@
+/* ==========================================================================
+   RoadDash design system
+   --------------------------------------------------------------------------
+   This file is split in two halves:
+
+     1. TOKENS  — the entire visual spec: colour, type, space, radius,
+                  elevation, motion and layer order.
+     2. PARTS   — components that consume those tokens.
+
+   Rule: nothing below the token block may hard-code a colour, a radius, a
+   spacing step, a duration or a shadow. If a value looks new, it goes in the
+   token block first; if it looks like an existing value, reuse the token.
+
+   The tokens that matter most are the *scales* — a ladder of type sizes, a
+   4 px spacing step, a fixed radius set and three motion durations. Ad-hoc
+   `clamp()` calls per component were what made the HUD drift: two places
+   would each invent their own "small caps label" and end up a pixel apart.
+   ========================================================================== */
+
+/* ========================== 1. TOKENS ==================================== */
+
 :root {
+  color-scheme: dark;
+
+  /* --- surfaces & ink ---------------------------------------------------- */
   --bg: #0b0e14;
-  --ink: #f2f6ff;
-  --muted: #8b97ad;
-  --accent: #ff7a1a;
-  --accent-2: #38d1ff;
-  --danger: #ff3b52;
-  --ok: #3ce88a;
   --panel: rgba(12, 16, 24, 0.82);
+  /* One white alpha ramp, reused for every fill and border in the app. */
+  --surface-1: rgba(255, 255, 255, 0.04);
+  --surface-2: rgba(255, 255, 255, 0.07);
+  --surface-3: rgba(255, 255, 255, 0.12);
+  --surface-4: rgba(255, 255, 255, 0.16);
   --stroke: rgba(255, 255, 255, 0.12);
+
+  --ink: #f2f6ff;
+  --ink-dim: #c3ccdb;
+  --muted: #8b97ad;
+
+  /* --- accents -----------------------------------------------------------
+     Each hue that needs a tinted treatment ships as a trio: the base, a wash
+     for filled surfaces, and a lighter stroke for that surface's border.
+     Pairing them by name is what keeps "orange button" and "orange banner"
+     from drifting apart. */
+  --accent: #ff7a1a;
+  --accent-ink: #1a0d02; /* text on a solid accent fill */
+  --accent-soft: rgba(255, 122, 26, 0.14);
+  --accent-2: #38d1ff;
+  --accent-2-soft: rgba(56, 209, 255, 0.14);
+  --danger: #ff3b52;
+  --danger-soft: rgba(255, 59, 82, 0.16);
+  --danger-stroke: rgba(255, 59, 82, 0.4);
+  --danger-ink: #ffd7dc;
+  --ok: #3ce88a;
+  --ok-soft: rgba(60, 232, 138, 0.14);
+  --ok-stroke: rgba(60, 232, 138, 0.4);
+  --ok-ink: #c9ffe4;
+  --gold: #ffb020;
+  --gold-ink: #fff2c0;
+
+  /* --- typography --------------------------------------------------------
+     A monotonic ladder: each step is larger than the one below it at every
+     breakpoint, which is what lets a component pick "the label step" or "the
+     display step" by name instead of by feel. */
+  --font-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'Arial Black', 'Helvetica Neue', Impact, system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --fs-2xs: clamp(7px, 1.1vmin, 10px); /* micro caps: SCORE, METRES, KM/H */
+  --fs-xs: clamp(8px, 1.2vmin, 11px); /* captions: BEST, blurb, subtitle */
+  --fs-sm: clamp(9px, 1.4vmin, 12px); /* hints, control legend, kbd */
+  --fs-md: clamp(10px, 1.5vmin, 13px); /* body copy at the small end */
+  --fs-lg: clamp(11px, 1.8vmin, 14px); /* tagline, result reason */
+  --fs-xl: clamp(13px, 2.1vmin, 17px); /* button + car names */
+  --fs-2xl: clamp(14px, 2.6vmin, 24px); /* coins, result figures */
+  --fs-3xl: clamp(16px, 2.9vmin, 28px); /* HUD stat readouts */
+  --fs-4xl: clamp(19px, 3.4vmin, 32px); /* speedometer */
+  --fs-5xl: clamp(22px, 6vmin, 54px); /* centre banner */
+  --fs-6xl: clamp(30px, 8vmin, 58px); /* panel titles */
+  --fs-7xl: clamp(38px, 11vmin, 78px); /* logo */
+
+  /* Tracking only. Uppercase display text needs the wide steps; the speedo
+     readout needs the tight ones to stay optically centred. */
+  --ls-tight: -0.04em;
+  --ls-snug: -0.02em;
+  --ls-normal: 0.04em;
+  --ls-wide: 0.08em;
+  --ls-caps: 0.2em;
+  --ls-caps-loose: 0.3em;
+
+  /* --- space -------------------------------------------------------------
+     A 4 px step. Fluid gaps live here too, so the HUD's three breakpoints
+     stay in the same relationship with each other. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --gutter: 20px; /* overlay padding */
+  --gap-col: clamp(8px, 2vw, 24px); /* HUD rows */
+  --gap-row: clamp(10px, 2.4vw, 22px);
+  --gap-stats: clamp(8px, 3vw, 30px);
+  --stat-inset: clamp(2px, 1vmin, 10px);
+  --hud-pad: clamp(10px, 2.2vmin, 22px);
+  --scrim-h: clamp(90px, 20vmin, 190px);
+
+  /* --- radius ------------------------------------------------------------ */
+  --r-0: 2px; /* micro bars */
+  --r-1: 4px;
+  --r-2: 8px; /* kbd, swatch */
+  --r-3: 12px; /* result tiles */
+  --r-4: 16px; /* controls */
+  --r-5: 24px; /* panels */
+  --r-full: 999px; /* pills, tracks */
+
+  /* --- elevation & glow --------------------------------------------------
+     Text over the 3D scene gets a shadow rather than a plate, so the HUD
+     scrim can stay subtle. Glows are named per hue, not per radius. */
+  --shadow-text: 0 1px 3px rgba(0, 0, 0, 0.85);
+  --shadow-text-lg: 0 4px 26px rgba(0, 0, 0, 0.75);
+  --shadow-panel: 0 30px 90px rgba(0, 0, 0, 0.6);
+  --glow-accent-sm: 0 0 6px rgba(255, 122, 26, 0.7);
+  --glow-accent: 0 0 28px rgba(255, 122, 26, 0.7);
+  --glow-accent-wide: 0 0 40px rgba(255, 122, 26, 0.55);
+  --glow-cyan-sm: 0 0 9px rgba(56, 209, 255, 0.9);
+  --glow-cyan: 0 0 24px rgba(56, 209, 255, 0.6);
+  --glow-cyan-wide: 0 0 50px rgba(56, 209, 255, 0.35);
+  --glow-danger-sm: 0 0 10px rgba(255, 59, 82, 0.6);
+  --glow-danger-wide: 0 0 50px rgba(255, 59, 82, 0.35);
+  --glow-ok: 0 0 10px rgba(60, 232, 138, 0.5);
+  --glow-gold: 0 0 10px rgba(255, 180, 40, 0.6);
+  --glow-gold-strong: 0 0 22px rgba(255, 214, 90, 1);
+  --glow-nitro: 0 0 18px rgba(255, 160, 40, 0.75);
+
+  /* --- scrims & gradients ------------------------------------------------ */
+  --scrim-top: linear-gradient(180deg, rgba(4, 7, 12, 0.82), rgba(4, 7, 12, 0));
+  --scrim-bottom: linear-gradient(0deg, rgba(4, 7, 12, 0.55), rgba(4, 7, 12, 0));
+  --scrim-overlay: radial-gradient(
+    circle at 50% 40%,
+    rgba(10, 14, 22, 0.55),
+    rgba(5, 7, 11, 0.9)
+  );
+  --scrim-hurt: radial-gradient(
+    circle at 50% 55%,
+    transparent 45%,
+    rgba(255, 40, 60, 0.55) 100%
+  );
+  --grad-cta: linear-gradient(180deg, #ff9040, var(--accent));
+  --grad-nitro: linear-gradient(90deg, #2aa8ff, #7de8ff);
+  --grad-nitro-full: linear-gradient(90deg, var(--accent), #ffd24a);
+  --grad-nitro-active: linear-gradient(90deg, #ff4d2e, #ffe36e);
+  --grad-coin: radial-gradient(circle at 35% 30%, var(--gold-ink) 0%, var(--gold) 70%);
+  --glass-shade: rgba(0, 0, 0, 0.35); /* the swatch's glasshouse */
+  --boost-glow: clamp(60px, 14vmin, 160px);
+  --boost-tint: rgba(56, 209, 255, 0.32);
+
+  /* --- motion ------------------------------------------------------------
+     Three steps cover everything: state changes, panel transitions, and
+     the overshooting punches that confirm a pickup. */
+  --dur-1: 120ms; /* hover, press, continuous bars */
+  --dur-2: 160ms; /* toggles, colour swaps */
+  --dur-3: 250ms; /* overlay fade, gauge moves */
+  --dur-4: 300ms; /* punches and banner entry */
+  --dur-pulse: 900ms;
+  --ease-out: cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-pop: cubic-bezier(0.2, 1.5, 0.4, 1);
+  --ease-banner: cubic-bezier(0.2, 1.4, 0.4, 1);
+
+  /* --- layers ------------------------------------------------------------
+     The HUD scrims sit at -1 *only* because `.hud` does not open a stacking
+     context. Give `.hud` a z-index or a transform and it has to move. */
+  --z-scrim: -1;
+  --z-boost: 3;
+  --z-hurt: 4;
+  --z-overlay: 5;
+
+  /* --- fixed component sizes -------------------------------------------- */
+  --speedo-size: clamp(74px, 13vmin, 118px);
+  --pip-w: clamp(16px, 2.6vmin, 24px);
+  --pip-h: clamp(5px, 0.8vmin, 8px);
+  --track-h: clamp(7px, 1.2vmin, 11px);
+  --nitro-max-w: 460px;
+  --panel-w: min(560px, 100%);
+  --panel-w-sm: min(400px, 100%);
+  --touch-target: 44px;
+  --icon-size: 30px;
+  --swatch-h: clamp(26px, 5vmin, 40px);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
 }
+
+/* ========================== 2. BASE ====================================== */
 
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Class-level `display` beats the UA `[hidden]` rule, so make it explicit. */
+/* Class-level `display` beats the UA `[hidden]` rule, so make it explicit
+   once, globally, instead of repeating it per overlay. */
 [hidden] {
   display: none !important;
 }
@@ -29,7 +209,7 @@ body {
   overflow: hidden;
   background: var(--bg);
   color: var(--ink);
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
   overscroll-behavior: none;
   touch-action: none;
   user-select: none;
@@ -48,7 +228,21 @@ body {
   display: block;
 }
 
-/* ============================ HUD ============================ */
+/* Visible to screen readers, invisible on screen. Used where a graphic
+   carries meaning that colour alone cannot convey (car stat bars). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========================== 3. HUD ====================================== */
 /* Scrims keep the HUD readable over bright biomes (snow, desert, port). */
 .hud::before,
 .hud::after {
@@ -56,48 +250,45 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  height: clamp(90px, 20vmin, 190px);
+  height: var(--scrim-h);
   pointer-events: none;
-  z-index: -1;
+  z-index: var(--z-scrim);
 }
 
 .hud::before {
   top: 0;
   /* Near-opaque: bright biomes (snow, desert) wash out the pale HUD text
      otherwise. */
-  background: linear-gradient(180deg, rgba(4, 7, 12, 0.82), rgba(4, 7, 12, 0));
+  background: var(--scrim-top);
 }
 
 .hud::after {
   bottom: 0;
-  background: linear-gradient(0deg, rgba(4, 7, 12, 0.55), rgba(4, 7, 12, 0));
+  background: var(--scrim-bottom);
 }
 
 .hud {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  padding: clamp(10px, 2.2vmin, 22px);
-  padding-top: max(clamp(10px, 2.2vmin, 22px), env(safe-area-inset-top));
+  padding: var(--hud-pad);
+  /* Keep the top row clear of notches and the browser's own chrome. */
+  padding-top: max(var(--hud-pad), env(safe-area-inset-top));
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   font-family: var(--font-mono);
 }
 
-.hud[hidden] {
-  display: none;
-}
-
 .hud-top {
   display: flex;
   align-items: flex-start;
-  gap: clamp(8px, 2vw, 24px);
+  gap: var(--gap-col);
 }
 
 .speedo {
   position: relative;
-  width: clamp(74px, 13vmin, 118px);
+  width: var(--speedo-size);
   aspect-ratio: 1;
   flex: 0 0 auto;
 }
@@ -113,25 +304,25 @@ body {
   fill: none;
   stroke-linecap: round;
   stroke-width: 9;
-  /* 3/4 of a circle, starting bottom-left */
+  /* 3/4 of a circle, starting bottom-left. Kept in sync with
+     DIAL_CIRCUMFERENCE in hud.ts. */
   stroke-dasharray: 264 351;
   stroke-dashoffset: 0;
 }
 
 .dial-track {
-  stroke: rgba(255, 255, 255, 0.14);
+  stroke: var(--surface-4);
 }
 
 .dial-fill {
-  stroke: url(#none);
   stroke: var(--accent);
-  filter: drop-shadow(0 0 6px rgba(255, 122, 26, 0.7));
-  transition: stroke 0.25s ease;
+  filter: drop-shadow(var(--glow-accent-sm));
+  transition: stroke var(--dur-3) var(--ease-out);
 }
 
-.speedo.nitro .dial-fill {
+.speedo.boosting .dial-fill {
   stroke: var(--accent-2);
-  filter: drop-shadow(0 0 9px rgba(56, 209, 255, 0.9));
+  filter: drop-shadow(var(--glow-cyan-sm));
 }
 
 .speedo-read {
@@ -145,24 +336,26 @@ body {
 }
 
 .speedo-read span {
-  font-size: clamp(19px, 3.4vmin, 32px);
+  font-size: var(--fs-4xl);
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: var(--ls-tight);
+  text-shadow: var(--shadow-text);
 }
 
 .speedo-read small {
-  font-size: clamp(7px, 1.1vmin, 10px);
+  font-size: var(--fs-2xs);
   color: var(--muted);
-  letter-spacing: 0.22em;
-  margin-top: 3px;
+  letter-spacing: var(--ls-caps);
+  margin-top: var(--s-1);
 }
 
 .stats {
   flex: 1 1 auto;
   display: flex;
-  gap: clamp(10px, 3vw, 30px);
+  gap: var(--gap-stats);
   align-items: flex-start;
-  padding-top: clamp(2px, 1vmin, 10px);
+  /* Nudges the readouts down onto the speedo's optical centre line. */
+  padding-top: var(--stat-inset);
 }
 
 .stat {
@@ -172,45 +365,44 @@ body {
 }
 
 .stat-value {
-  font-size: clamp(16px, 2.9vmin, 28px);
+  font-size: var(--fs-3xl);
   font-weight: 700;
-  letter-spacing: -0.02em;
-  /* Text shadow rather than a panel, so the scrim can stay subtle. */
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  letter-spacing: var(--ls-snug);
+  text-shadow: var(--shadow-text);
 }
 
 .stat-label {
-  font-size: clamp(7px, 1vmin, 10px);
+  font-size: var(--fs-2xs);
   color: var(--muted);
-  letter-spacing: 0.2em;
-  margin-top: 5px;
+  letter-spacing: var(--ls-caps);
+  margin-top: var(--s-1);
 }
 
 .right-stack {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: var(--s-2);
   pointer-events: auto;
 }
 
 .coins {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: clamp(15px, 2.6vmin, 24px);
+  gap: var(--s-2);
+  font-size: var(--fs-2xl);
   font-weight: 700;
   transform-origin: right center;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  text-shadow: var(--shadow-text);
 }
 
 /* Coin pickup confirmation: a short punch on the counter. */
 .coins.bump {
-  animation: coinBump 0.3s cubic-bezier(0.2, 1.5, 0.4, 1);
+  animation: coinBump var(--dur-4) var(--ease-pop);
 }
 
 .coins.bump .coin-dot {
-  animation: coinDot 0.3s ease-out;
+  animation: coinDot var(--dur-4) var(--ease-out);
 }
 
 @keyframes coinBump {
@@ -219,7 +411,7 @@ body {
   }
   35% {
     transform: scale(1.28);
-    color: #fff3c4;
+    color: var(--gold-ink);
   }
   100% {
     transform: scale(1);
@@ -229,31 +421,31 @@ body {
 @keyframes coinDot {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 10px rgba(255, 180, 40, 0.6);
+    box-shadow: var(--glow-gold);
   }
   35% {
     transform: scale(1.5);
-    box-shadow: 0 0 22px rgba(255, 214, 90, 1);
+    box-shadow: var(--glow-gold-strong);
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 0 10px rgba(255, 180, 40, 0.6);
+    box-shadow: var(--glow-gold);
   }
 }
 
 .coin-dot {
   width: 0.72em;
   height: 0.72em;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff2c0, #ffb020 70%);
-  box-shadow: 0 0 10px rgba(255, 180, 40, 0.6);
+  border-radius: var(--r-full);
+  background: var(--grad-coin);
+  box-shadow: var(--glow-gold);
 }
 
 .best {
-  font-size: clamp(8px, 1.2vmin, 11px);
-  color: #c3ccdb;
-  letter-spacing: 0.14em;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  font-size: var(--fs-xs);
+  color: var(--ink-dim);
+  letter-spacing: var(--ls-caps);
+  text-shadow: var(--shadow-text);
 }
 
 .best span {
@@ -261,22 +453,23 @@ body {
 }
 
 .icon-button {
-  margin-top: 4px;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
+  margin-top: var(--s-1);
+  width: var(--icon-size);
+  height: var(--icon-size);
+  border-radius: var(--r-2);
   border: 1px solid var(--stroke);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-2);
   color: var(--ink);
-  font-size: 14px;
+  font-size: var(--fs-md);
+  line-height: 1;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: background 0.15s ease, opacity 0.15s ease;
+  transition: background var(--dur-2) var(--ease-out), opacity var(--dur-2) var(--ease-out);
 }
 
 .icon-button:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--surface-4);
 }
 
 .icon-button.muted {
@@ -286,26 +479,26 @@ body {
 /* ---------- police warning ---------- */
 .police-warning {
   align-self: center;
-  margin-top: 10px;
+  margin-top: var(--s-2);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: rgba(255, 59, 82, 0.16);
-  border: 1px solid rgba(255, 59, 82, 0.4);
-  color: #ffd7dc;
-  font-size: clamp(9px, 1.4vmin, 12px);
-  letter-spacing: 0.2em;
-  animation: pulse 0.9s ease-in-out infinite;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--r-full);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-stroke);
+  color: var(--danger-ink);
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-caps);
+  animation: pulse var(--dur-pulse) var(--ease-out) infinite;
 }
 
 .police-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ff3b52;
-  box-shadow: 0 0 10px #ff3b52;
+  width: var(--s-2);
+  height: var(--s-2);
+  border-radius: var(--r-full);
+  background: var(--danger);
+  box-shadow: var(--glow-danger-sm);
 }
 
 @keyframes pulse {
@@ -327,34 +520,34 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: var(--s-1);
   text-align: center;
   font-family: var(--font-display);
-  letter-spacing: 0.06em;
-  animation: bannerIn 0.28s cubic-bezier(0.2, 1.4, 0.4, 1);
+  letter-spacing: var(--ls-normal);
+  animation: bannerIn var(--dur-4) var(--ease-banner);
 }
 
 .banner span {
-  font-size: clamp(22px, 6vmin, 54px);
+  font-size: var(--fs-5xl);
   line-height: 1;
-  text-shadow: 0 4px 26px rgba(0, 0, 0, 0.75);
+  text-shadow: var(--shadow-text-lg);
 }
 
 .banner small {
   font-family: var(--font-mono);
-  font-size: clamp(8px, 1.4vmin, 12px);
-  letter-spacing: 0.3em;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-caps-loose);
   color: var(--muted);
 }
 
 .banner.near span {
   color: var(--accent-2);
-  text-shadow: 0 0 24px rgba(56, 209, 255, 0.6);
+  text-shadow: var(--glow-cyan);
 }
 
 .banner.boost span {
   color: var(--accent);
-  text-shadow: 0 0 28px rgba(255, 122, 26, 0.7);
+  text-shadow: var(--glow-accent);
 }
 
 .banner.danger span {
@@ -376,76 +569,87 @@ body {
 .hud-bottom {
   display: flex;
   align-items: center;
-  gap: clamp(10px, 2.4vw, 22px);
+  gap: var(--gap-row);
+  /* Mirror the top inset so the gauges clear a home indicator. */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .shield {
   display: flex;
-  gap: 5px;
+  gap: var(--s-1);
 }
 
 .pip {
-  width: clamp(16px, 2.6vmin, 24px);
-  height: clamp(5px, 0.8vmin, 8px);
-  border-radius: 3px;
+  width: var(--pip-w);
+  height: var(--pip-h);
+  border-radius: var(--r-0);
   background: var(--ok);
-  box-shadow: 0 0 10px rgba(60, 232, 138, 0.5);
-  transition: background 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: var(--glow-ok);
+  transition: background var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out),
+    opacity var(--dur-2) var(--ease-out);
 }
 
 .pip.off {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--surface-4);
   box-shadow: none;
 }
 
 .pip.low {
   background: var(--danger);
-  box-shadow: 0 0 10px rgba(255, 59, 82, 0.6);
-  animation: pulse 0.6s ease-in-out infinite;
+  box-shadow: var(--glow-danger-sm);
+  animation: pulse 0.6s var(--ease-out) infinite;
 }
 
 .nitro {
   flex: 1 1 auto;
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: 460px;
+  gap: var(--s-3);
+  max-width: var(--nitro-max-w);
 }
 
 .nitro-track {
   position: relative;
   flex: 1 1 auto;
-  height: clamp(7px, 1.2vmin, 11px);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  height: var(--track-h);
+  border-radius: var(--r-full);
+  background: var(--surface-3);
   overflow: hidden;
+  transition: background var(--dur-2) var(--ease-out);
+}
+
+/* The empty part of the track lights up while the nitro is burning, so the
+   bar says "this is happening now" and not just "this much is left". */
+.nitro.active .nitro-track {
+  background: var(--accent-2-soft);
 }
 
 .nitro-fill {
   position: absolute;
   inset: 0;
   width: 0%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #2aa8ff, #7de8ff);
-  transition: width 0.12s linear;
+  border-radius: var(--r-full);
+  background: var(--grad-nitro);
+  transition: width var(--dur-1) linear;
 }
 
 .nitro.full .nitro-fill {
-  background: linear-gradient(90deg, #ff7a1a, #ffd24a);
-  box-shadow: 0 0 18px rgba(255, 160, 40, 0.75);
-  animation: pulse 0.7s ease-in-out infinite;
+  background: var(--grad-nitro-full);
+  box-shadow: var(--glow-nitro);
+  animation: pulse 0.7s var(--ease-out) infinite;
 }
 
 .nitro.active .nitro-fill {
-  background: linear-gradient(90deg, #ff4d2e, #ffe36e);
+  background: var(--grad-nitro-active);
 }
 
 .nitro-label {
-  font-size: clamp(8px, 1.2vmin, 11px);
-  letter-spacing: 0.22em;
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-caps);
   color: var(--muted);
   min-width: 4.4em;
   text-align: right;
+  transition: color var(--dur-2) var(--ease-out);
 }
 
 .nitro.full .nitro-label,
@@ -453,21 +657,18 @@ body {
   color: var(--ink);
 }
 
-/* ============================ overlays ============================ */
+/* ========================== 4. OVERLAYS ================================= */
+
 .overlay {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 20px;
-  background: radial-gradient(circle at 50% 40%, rgba(10, 14, 22, 0.55), rgba(5, 7, 11, 0.9));
+  padding: var(--gutter);
+  background: var(--scrim-overlay);
   backdrop-filter: blur(3px);
-  z-index: 5;
-  animation: fadeIn 0.25s ease;
-}
-
-.overlay[hidden] {
-  display: none;
+  z-index: var(--z-overlay);
+  animation: fadeIn var(--dur-3) var(--ease-out);
 }
 
 @keyframes fadeIn {
@@ -480,27 +681,39 @@ body {
 }
 
 .panel {
-  width: min(560px, 100%);
+  width: var(--panel-w);
   max-height: 100%;
   overflow-y: auto;
-  padding: clamp(18px, 4vmin, 34px);
-  border-radius: 22px;
+  overscroll-behavior: contain;
+  padding: clamp(var(--s-3), 4vmin, var(--s-8));
+  border-radius: var(--r-5);
   background: var(--panel);
   border: 1px solid var(--stroke);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-panel);
   text-align: center;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-4) transparent;
+}
+
+.panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+  background: var(--surface-4);
+  border-radius: var(--r-full);
 }
 
 .panel.small {
-  width: min(400px, 100%);
+  width: var(--panel-w-sm);
 }
 
 .logo {
-  margin: 0 0 6px;
+  margin: 0 0 var(--s-2);
   font-family: var(--font-display);
-  font-size: clamp(38px, 11vmin, 78px);
+  font-size: var(--fs-7xl);
   line-height: 0.9;
-  letter-spacing: -0.02em;
+  letter-spacing: var(--ls-snug);
   display: flex;
   justify-content: center;
   gap: 0.06em;
@@ -512,89 +725,91 @@ body {
 
 .logo-b {
   color: var(--accent);
-  text-shadow: 0 0 40px rgba(255, 122, 26, 0.55);
+  text-shadow: var(--glow-accent-wide);
 }
 
 .tagline {
-  margin: 0 0 20px;
+  margin: 0 0 var(--s-5);
   color: var(--muted);
-  font-size: clamp(11px, 1.8vmin, 14px);
-  letter-spacing: 0.04em;
+  font-size: var(--fs-lg);
+  letter-spacing: var(--ls-normal);
 }
 
 /* ---------- car picker ---------- */
 .car-select {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
 }
 
 .car-card {
-  padding: 10px 8px 12px;
-  border-radius: 14px;
+  padding: var(--s-3) var(--s-2) var(--s-3);
+  border-radius: var(--r-4);
   border: 1px solid var(--stroke);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-1);
   cursor: pointer;
   text-align: center;
-  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
   color: inherit;
   font: inherit;
+  transition: transform var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out),
+    background var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
 }
 
 .car-card:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-2);
 }
 
 .car-card.selected {
   border-color: var(--accent);
-  background: rgba(255, 122, 26, 0.14);
+  background: var(--accent-soft);
   box-shadow: 0 0 0 1px var(--accent) inset;
 }
 
 .car-swatch {
   width: 100%;
-  height: clamp(26px, 5vmin, 40px);
-  border-radius: 8px;
-  margin-bottom: 8px;
+  height: var(--swatch-h);
+  border-radius: var(--r-2);
+  margin-bottom: var(--s-2);
   position: relative;
   overflow: hidden;
 }
 
+/* Reads as the car's glasshouse, so the swatch is not just a colour chip. */
 .car-swatch::after {
   content: '';
   position: absolute;
   inset: auto 8% 22% 8%;
   height: 34%;
-  border-radius: 4px 4px 2px 2px;
-  background: rgba(0, 0, 0, 0.35);
+  border-radius: var(--r-1) var(--r-1) var(--r-0) var(--r-0);
+  background: var(--glass-shade);
 }
 
 .car-name {
   font-family: var(--font-display);
-  font-size: clamp(10px, 1.8vmin, 14px);
-  letter-spacing: 0.04em;
+  font-size: var(--fs-xl);
+  letter-spacing: var(--ls-normal);
 }
 
 .car-blurb {
-  font-size: clamp(8px, 1.3vmin, 10px);
+  font-size: var(--fs-md);
   color: var(--muted);
-  margin-top: 3px;
+  margin-top: var(--s-1);
   line-height: 1.3;
 }
 
 .car-stats {
   display: flex;
-  gap: 3px;
-  margin-top: 7px;
+  gap: var(--s-1);
+  margin-top: var(--s-2);
 }
 
 .bar {
   flex: 1;
   height: 3px;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.14);
+  border-radius: var(--r-0);
+  background: var(--surface-3);
   overflow: hidden;
 }
 
@@ -617,48 +832,49 @@ body {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 8px 14px;
-  margin-bottom: 14px;
+  gap: var(--s-2) var(--s-3);
+  margin-bottom: var(--s-3);
 }
 
 .control {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: clamp(9px, 1.5vmin, 12px);
+  gap: var(--s-2);
+  font-size: var(--fs-sm);
   color: var(--muted);
 }
 
 kbd {
   font-family: var(--font-mono);
-  font-size: clamp(9px, 1.4vmin, 11px);
-  padding: 3px 6px;
-  border-radius: 6px;
+  font-size: var(--fs-sm);
+  padding: 3px var(--s-2);
+  border-radius: var(--r-2);
   border: 1px solid var(--stroke);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-2);
   color: var(--ink);
 }
 
 .hint {
-  margin: 12px 0 0;
-  font-size: clamp(9px, 1.4vmin, 11px);
+  margin: var(--s-3) 0 0;
+  font-size: var(--fs-sm);
   color: var(--muted);
   line-height: 1.5;
 }
 
+/* ---------- buttons ---------- */
 .cta {
-  margin-top: 16px;
-  padding: 13px 26px;
+  margin-top: var(--s-4);
+  padding: var(--s-3) var(--s-6);
   width: 100%;
   border: 0;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #ff9040, var(--accent));
-  color: #1a0d02;
+  border-radius: var(--r-4);
+  background: var(--grad-cta);
+  color: var(--accent-ink);
   font-family: var(--font-display);
-  font-size: clamp(13px, 2.1vmin, 17px);
-  letter-spacing: 0.08em;
+  font-size: var(--fs-xl);
+  letter-spacing: var(--ls-wide);
   cursor: pointer;
-  transition: transform 0.12s ease, filter 0.12s ease;
+  transition: transform var(--dur-1) var(--ease-out), filter var(--dur-1) var(--ease-out);
 }
 
 .cta:hover {
@@ -671,17 +887,17 @@ kbd {
 }
 
 .cta.ghost {
-  margin-top: 8px;
-  background: rgba(255, 255, 255, 0.07);
+  margin-top: var(--s-2);
+  background: var(--surface-2);
   color: var(--ink);
   border: 1px solid var(--stroke);
 }
 
 .best-line {
-  margin: 14px 0 0;
+  margin: var(--s-3) 0 0;
   font-family: var(--font-mono);
-  font-size: clamp(9px, 1.4vmin, 11px);
-  letter-spacing: 0.2em;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-caps);
   color: var(--muted);
 }
 
@@ -693,62 +909,80 @@ kbd {
 .over-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(30px, 8vmin, 58px);
-  letter-spacing: 0.02em;
+  font-size: var(--fs-6xl);
+  letter-spacing: var(--ls-normal);
   color: var(--danger);
-  text-shadow: 0 0 50px rgba(255, 59, 82, 0.35);
+  text-shadow: var(--glow-danger-wide);
 }
 
 .over-title.busted {
   color: var(--accent-2);
-  text-shadow: 0 0 50px rgba(56, 209, 255, 0.35);
+  text-shadow: var(--glow-cyan-wide);
+}
+
+/* Pausing is not a loss. The pause panel reuses the results title, so it has
+   to opt out of the wreck treatment rather than reading as a failure. */
+.over-title.held {
+  color: var(--accent-2);
+  text-shadow: var(--glow-cyan-wide);
 }
 
 .over-reason {
-  margin: 8px 0 20px;
+  margin: var(--s-2) 0 var(--s-2);
   color: var(--muted);
-  font-size: clamp(11px, 1.7vmin, 14px);
+  font-size: var(--fs-lg);
+}
+
+/* Where the run ended — the biome names are part of the game's identity, and
+   "died in a place" is the sentence a score never tells you. */
+.over-where {
+  margin: 0 0 var(--s-5);
+  color: var(--ink-dim);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--ls-caps);
 }
 
 .result-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
 }
 
 .result-grid div {
-  padding: 12px 4px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: var(--s-3) var(--s-1);
+  border-radius: var(--r-3);
+  background: var(--surface-1);
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--s-1);
 }
 
 .result-grid span {
   font-family: var(--font-mono);
-  font-size: clamp(14px, 2.6vmin, 22px);
+  font-size: var(--fs-2xl);
   font-weight: 700;
+  line-height: 1.1;
 }
 
 .result-grid small {
-  font-size: clamp(7px, 1.1vmin, 9px);
-  letter-spacing: 0.16em;
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--ls-caps);
   color: var(--muted);
 }
 
 .new-best {
-  margin-top: 12px;
-  padding: 8px;
-  border-radius: 10px;
-  background: rgba(60, 232, 138, 0.14);
-  border: 1px solid rgba(60, 232, 138, 0.4);
-  color: #c9ffe4;
+  margin-top: var(--s-3);
+  padding: var(--s-2);
+  border-radius: var(--r-3);
+  background: var(--ok-soft);
+  border: 1px solid var(--ok-stroke);
+  color: var(--ok-ink);
   font-family: var(--font-mono);
-  font-size: clamp(9px, 1.4vmin, 12px);
-  letter-spacing: 0.2em;
-  animation: pulse 1.1s ease-in-out infinite;
+  font-size: var(--fs-sm);
+  letter-spacing: var(--ls-caps);
+  animation: pulse 1.1s var(--ease-out) infinite;
 }
 
 /* ---------- damage vignette ---------- */
@@ -758,9 +992,9 @@ kbd {
   inset: 0;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.16s ease;
-  background: radial-gradient(circle at 50% 55%, transparent 45%, rgba(255, 40, 60, 0.55) 100%);
-  z-index: 4;
+  transition: opacity var(--dur-2) var(--ease-out);
+  background: var(--scrim-hurt);
+  z-index: var(--z-hurt);
 }
 
 #app.hurt::after {
@@ -772,18 +1006,92 @@ kbd {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 3;
-  box-shadow: inset 0 0 clamp(60px, 14vmin, 160px) rgba(56, 209, 255, 0.32);
+  z-index: var(--z-boost);
+  box-shadow: inset 0 0 var(--boost-glow) var(--boost-tint);
 }
+
+/* ========================== 5. FOCUS ==================================== */
+/* Focus is drawn on the shared accent so it reads as one system, and it is
+   drawn with a ring plus offset rather than a border so it never reflows the
+   control it is on. Mouse clicks do not show it. */
+
+:where(button, [role='radio'], a):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.car-card:focus-visible {
+  /* The selected card already owns an inset ring; the focus ring has to
+     clear the border to stay legible on top of it. */
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-color: var(--accent);
+}
+
+/* ========================== 6. ADAPTIVE ================================= */
 
 @media (max-width: 520px) {
   .stats {
-    gap: 12px;
+    gap: var(--s-3);
   }
   .car-select {
-    gap: 6px;
+    gap: var(--s-1);
   }
   .result-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Phone landscape: the panels run out of height long before they run out of
+   width, so the display type steps down before anything has to scroll. */
+@media (max-height: 620px) {
+  .logo {
+    font-size: var(--fs-5xl);
+    margin-bottom: var(--s-1);
+  }
+  .tagline {
+    margin-bottom: var(--s-3);
+  }
+  .car-select {
+    margin-bottom: var(--s-3);
+  }
+  .controls {
+    margin-bottom: var(--s-2);
+  }
+  .panel {
+    padding: var(--s-4);
+  }
+}
+
+/* Touch devices cannot hover, and 30 px is below a comfortable thumb. */
+@media (pointer: coarse) {
+  .icon-button {
+    width: var(--touch-target);
+    height: var(--touch-target);
+  }
+}
+
+/* ========================== 7. MOTION =================================== */
+/* Every animation here is decorative confirmation of something the player
+   already registered visually — a pickup, a hit, a bar filling. Collapsing
+   the durations keeps the confirmation without the movement. */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* The speedo readout jumps; its glow does not have to swing. */
+  .dial-fill {
+    filter: drop-shadow(var(--glow-accent-sm));
+  }
+
+  .car-card:hover {
+    transform: none;
   }
 }

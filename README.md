@@ -50,6 +50,7 @@ Three cars trade top end against armour and agility. The best score is kept in
 ```
 src/
   main.ts            bootstrap
+  styles.css         the design system: tokens, then parts
   game/
     config.ts        all tuning: lane width, curve, biome palettes, car stats
     game.ts          orchestration, state machine, camera, collisions, scoring
@@ -83,6 +84,70 @@ Entities that stay a fixed distance apart on screen (the car's lateral
 position, the camera) get explicit naming: `px` is the lane offset, `pWorldX` is
 where the car actually is.
 
+## Design system
+
+`src/styles.css` is split in two: a **token block** that holds the whole visual
+spec, and the **parts** that consume it. Nothing below the block may hard-code
+a colour, a radius, a spacing step, a duration or a shadow.
+
+The scales are the point, not the individual values:
+
+| Scale | Steps |
+| --- | --- |
+| Type | `--fs-2xs` … `--fs-7xl`, 12 steps, monotonic at every breakpoint |
+| Space | `--s-1` … `--s-8` on a 4 px step, plus fluid `--gap-*` |
+| Radius | `--r-0` … `--r-5` and `--r-full` |
+| Motion | `--dur-1` … `--dur-4` with three easings |
+| Colour | surface/ink ramp, then one trio per accent hue |
+| Layer | `--z-boost` < `--z-hurt` < `--z-overlay` |
+
+Monotonicity is what lets a component ask for "the label step" or "the display
+step" by name. Picking a size by feel is what produced the original HUD, where
+two places had each invented their own small-caps label and ended up a pixel
+apart.
+
+Three conventions worth knowing before editing:
+
+- **Accents come in trios.** A hue that gets a tinted treatment ships a base, a
+  `-soft` wash and a `-stroke` border. "Orange button" and "orange banner" are
+  the same tokens, so they cannot drift.
+- **The HUD scrims sit at `z-index: -1`** and that only works because `.hud`
+  does not open a stacking context. Give it a `z-index` or a `transform` and
+  they have to move.
+- **Durations are exempted by name.** `tools/design.mjs` allows literal
+  durations only on the three looping pulses, which need to beat differently.
+
+### Accessibility
+
+The interface is a keyboard game first, so this is load-bearing rather than
+polish:
+
+- Arrow keys move the car selection **and** carry focus with it; the picker is a
+  `radiogroup` with roving tabindex, so it is one tab stop.
+- Dialogs move focus to their controls and keep Tab inside. Background content
+  is inert until the dialog closes; resuming restores the previous focus.
+- Banners and the police warning are polite live regions. The speed and score
+  readouts deliberately are not — a per-frame live region is noise.
+- Armour and nitro report their state in text, not only as pips and a bar.
+- Nitro readouts round down in 0.25% steps, so they never promise an unavailable
+  activation charge or a full bar.
+- Every animation is decorative confirmation of something already seen
+  visually, so `prefers-reduced-motion` collapses them all to 1 ms.
+
+### Guards
+
+Two suites sit outside the game:
+
+- `tools/design.mjs` reads the stylesheet and the markup. It fails the tests on
+  a colour, font-size, radius or duration literal below the token block, on a
+  token that is defined but unused or used but undefined, on a HUD id missing
+  from the markup, and on an accessibility hook that quietly went away.
+- `tools/a11y.mjs` drives a browser and checks the same things behave: the
+  arrows, the tab order, the mute state, the gauge labels, reduced motion.
+
+Both are part of `npm test`. The design guard is a plain static read — no
+browser — so it runs first and fails fast.
+
 ## Deploying
 
 **GitHub Pages** — push to `main`; `.github/workflows/deploy.yml` builds and
@@ -112,9 +177,12 @@ timestep instead of waiting on real frames. Actions are injected through the
 same entry point the input layer uses.
 
 ```bash
-npm test              # smoke + mechanics
+npm test              # resources + design + smoke + mechanics + fx + a11y
+npm run test:design   # design-system guard alone (no browser)
+npm run test:a11y     # keyboard / live-region / reduced-motion checks
 npm run test:soak     # 60 s of bot play, watching for pool/graph growth
 npm run shots         # screenshot every biome into tools/shots/biomes
+npm run shots:ui      # screenshot every overlay and HUD state into tools/shots/ui
 ```
 
 `tools/mechanics.mjs` covers lane changes, jumping, ducking, ramp launches,
@@ -136,3 +204,8 @@ they can be pointed at a deployed build.
 
 `tools/inspect.mjs` dumps a per-frame hazard/player overlap trace, which is the
 fastest way to attribute a collision bug to spawning versus collision geometry.
+
+`tools/ui.mjs` screenshots the interface rather than the world: menu, focus
+rings, both gauge alarm states, results, pause, phone portrait, phone
+landscape and reduced motion. Automatic game frames stop before capturing;
+the tool checks that the alarm and nitro states survive the screenshot delay.
